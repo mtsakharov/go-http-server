@@ -22,9 +22,46 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = l.Accept()
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		go handleConn(conn)
+	}
+
+}
+
+func handleConn(conn net.Conn) {
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			fmt.Println("Error closing connection: ", err.Error())
+		}
+	}(conn)
+
+	buf := make([]byte, 1024)
+	read, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+		return
+	}
+
+	request := string(buf[:read]) // только реально прочитанные байты, не весь буфер
+	fmt.Println(request)          // для дебага, увидишь что шлёт клиент
+
+	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	if err != nil {
+		return
+	}
+
+	// HTTP/1.1 ответ — формат строго такой:
+	// STATUS LINE\r\n
+	// HEADERS\r\n
+	// \r\n
+	// BODY (опционально)
+	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	if err != nil {
+		return
 	}
 }
