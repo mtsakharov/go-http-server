@@ -44,20 +44,25 @@ func handleConn(conn net.Conn) {
 	}
 
 	request := string(buf[:read])
-
-	// Извлекаем первую строку запроса
 	requestLine := strings.Split(request, "\r\n")[0]
-
-	// Извлекаем путь (второе слово)
 	parts := strings.Split(requestLine, " ")
 	if len(parts) < 2 {
-		return // некорректный запрос
+		return
 	}
 	path := parts[1]
 
-	// Маршрутизация
 	if path == "/" {
 		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+
+	} else if strings.HasPrefix(path, "/echo/") {
+		body := strings.TrimPrefix(path, "/echo/")
+		response := fmt.Sprintf(
+			"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
+			len(body),
+			body,
+		)
+		conn.Write([]byte(response))
+
 	} else {
 		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 	}
