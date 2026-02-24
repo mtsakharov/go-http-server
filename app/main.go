@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
@@ -34,12 +35,7 @@ func main() {
 }
 
 func handleConn(conn net.Conn) {
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			fmt.Println("Error closing connection: ", err.Error())
-		}
-	}(conn)
+	defer conn.Close()
 
 	buf := make([]byte, 1024)
 	read, err := conn.Read(buf)
@@ -47,21 +43,22 @@ func handleConn(conn net.Conn) {
 		return
 	}
 
-	request := string(buf[:read]) // только реально прочитанные байты, не весь буфер
-	fmt.Println(request)          // для дебага, увидишь что шлёт клиент
+	request := string(buf[:read])
 
-	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	if err != nil {
-		return
+	// Извлекаем первую строку запроса
+	requestLine := strings.Split(request, "\r\n")[0]
+
+	// Извлекаем путь (второе слово)
+	parts := strings.Split(requestLine, " ")
+	if len(parts) < 2 {
+		return // некорректный запрос
 	}
+	path := parts[1]
 
-	// HTTP/1.1 ответ — формат строго такой:
-	// STATUS LINE\r\n
-	// HEADERS\r\n
-	// \r\n
-	// BODY (опционально)
-	_, err = conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	if err != nil {
-		return
+	// Маршрутизация
+	if path == "/" {
+		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	} else {
+		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 	}
 }
