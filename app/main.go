@@ -1,10 +1,15 @@
 package main
 
 import (
+	_ "bytes"
+	_ "compress/gzip"
 	"fmt"
 	"net"
 	"os"
 	"strings"
+
+	"github.com/codecrafters-io/http-server-starter-go/handlers"
+	"github.com/codecrafters-io/http-server-starter-go/httpcore"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
@@ -12,10 +17,6 @@ var _ = net.Listen
 var _ = os.Exit
 
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Println("Logs from your program will appear here!")
-
-	// TODO: Uncomment the code below to pass the first stage
 	var dir string
 	for i, arg := range os.Args {
 		if arg == "--directory" && i+1 < len(os.Args) {
@@ -35,9 +36,8 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go handleConn(conn, dir) // передаём dir
+		go handleConn(conn, dir)
 	}
-
 }
 
 func handleConn(conn net.Conn, dir string) {
@@ -49,76 +49,18 @@ func handleConn(conn net.Conn, dir string) {
 		return
 	}
 
-	request := string(buf[:read])
+	req := httpcore.ParseRequest(string(buf[:read]))
 
-	lines := strings.Split(request, "\r\n")
-	requestLine := lines[0]
-	parts := strings.Split(requestLine, " ")
-	if len(parts) < 2 {
-		return
+	switch {
+	case req.Path == "/":
+		httpcore.Response{Status: httpcore.StatusOK}.Write(conn)
+	case strings.HasPrefix(req.Path, "/echo/"):
+		handlers.Echo(req, conn)
+	case strings.HasPrefix(req.Path, "/files/"):
+		handlers.Files(req, conn, dir)
+	case req.Path == "/user-agent":
+		handlers.UserAgent(req, conn)
+	default:
+		httpcore.Response{Status: httpcore.StatusNotFound}.Write(conn)
 	}
-	path := parts[1]
-
-	if path == "/" {
-		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-
-	} else if strings.HasPrefix(path, "/echo/") {
-		body := strings.TrimPrefix(path, "/echo/")
-		response := fmt.Sprintf(
-			"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-			len(body),
-			body,
-		)
-		conn.Write([]byte(response))
-
-	} else if strings.HasPrefix(path, "/files/") {
-		filename := strings.TrimPrefix(path, "/files/")
-		fullPath := dir + filename
-		method := parts[0] // "GET" или "POST"
-
-		if method == "GET" {
-			data, err := os.ReadFile(fullPath)
-			if err != nil {
-				conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-			} else {
-				response := fmt.Sprintf(
-					"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n",
-					len(data),
-				)
-				conn.Write([]byte(response))
-				conn.Write(data)
-			}
-
-		} else if method == "POST" {
-			// Разбиваем запрос на заголовки и тело
-			requestParts := strings.SplitN(request, "\r\n\r\n", 2)
-			body := requestParts[1]
-
-			err := os.WriteFile(fullPath, []byte(body), 0644)
-			if err != nil {
-				conn.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n\r\n"))
-			} else {
-				conn.Write([]byte("HTTP/1.1 201 Created\r\n\r\n"))
-			}
-		}
-	} else if path == "/user-agent" {
-		body := getHeader(lines, "User-Agent")
-		response := fmt.Sprintf(
-			"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-			len(body), body,
-		)
-		conn.Write([]byte(response))
-	} else {
-		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-	}
-}
-
-func getHeader(lines []string, name string) string {
-	for _, line := range lines {
-		if strings.HasPrefix(line, name+": ") {
-			return strings.TrimPrefix(line, name+": ")
-		}
-	}
-
-	return ""
 }
