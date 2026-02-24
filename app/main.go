@@ -16,6 +16,12 @@ func main() {
 	fmt.Println("Logs from your program will appear here!")
 
 	// TODO: Uncomment the code below to pass the first stage
+	var dir string
+	for i, arg := range os.Args {
+		if arg == "--directory" && i+1 < len(os.Args) {
+			dir = os.Args[i+1]
+		}
+	}
 
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
@@ -29,12 +35,12 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go handleConn(conn)
+		go handleConn(conn, dir) // передаём dir
 	}
 
 }
 
-func handleConn(conn net.Conn) {
+func handleConn(conn net.Conn, dir string) {
 	defer conn.Close()
 
 	buf := make([]byte, 1024)
@@ -64,6 +70,22 @@ func handleConn(conn net.Conn) {
 			body,
 		)
 		conn.Write([]byte(response))
+
+	} else if strings.HasPrefix(path, "/files/") {
+		filename := strings.TrimPrefix(path, "/files/")
+		fullPath := dir + filename
+
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+		} else {
+			response := fmt.Sprintf(
+				"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n",
+				len(data),
+			)
+			conn.Write([]byte(response))
+			conn.Write(data)
+		}
 
 	} else if path == "/user-agent" {
 		body := getHeader(lines, "User-Agent")
