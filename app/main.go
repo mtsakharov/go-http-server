@@ -41,7 +41,6 @@ func main() {
 }
 
 func handleConn(conn net.Conn, dir string) {
-
 	defer conn.Close()
 
 	for {
@@ -53,25 +52,29 @@ func handleConn(conn net.Conn, dir string) {
 
 		req := httpcore.ParseRequest(string(buf[:read]))
 
+		var resp httpcore.Response
 		switch {
 		case req.Path == "/":
-			httpcore.Response{Status: httpcore.StatusOK}.Write(conn)
+			resp = httpcore.Response{Status: httpcore.StatusOK}
 		case strings.HasPrefix(req.Path, "/echo/"):
-			handlers.Echo(req, conn)
+			resp = handlers.Echo(req)
 		case strings.HasPrefix(req.Path, "/files/"):
-			handlers.Files(req, conn, dir)
+			resp = handlers.Files(req, dir)
 		case req.Path == "/user-agent":
-			handlers.UserAgent(req, conn)
+			resp = handlers.UserAgent(req)
 		default:
-			httpcore.Response{Status: httpcore.StatusNotFound}.Write(conn)
+			resp = httpcore.Response{Status: httpcore.StatusNotFound}
 		}
 
 		if req.Headers["Connection"] == "close" {
-			httpcore.Response{
-				Status:     httpcore.StatusOK,
-				Connection: "close",
-			}.Write(conn)
+			resp.Connection = "close"
+		}
+
+		resp.Write(conn)
+
+		if req.Headers["Connection"] == "close" {
 			return
 		}
 	}
+}
 }
