@@ -9,6 +9,7 @@ type Response struct {
 	Status      StatusCode
 	ContentType string
 	Encoding    string
+	Connection  string
 	Body        []byte
 }
 
@@ -21,6 +22,9 @@ func (r Response) Write(conn net.Conn) {
 	}
 	if r.Encoding != "" {
 		result += fmt.Sprintf("Content-Encoding: %s\r\n", r.Encoding)
+	}
+	if r.Connection != "" {
+		result += fmt.Sprintf("Connection: %s\r\n", r.Connection) // добавить
 	}
 	if len(r.Body) > 0 {
 		result += fmt.Sprintf("Content-Length: %d\r\n", len(r.Body))

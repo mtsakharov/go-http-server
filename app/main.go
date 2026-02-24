@@ -67,6 +67,10 @@ func handleConn(conn net.Conn, dir string) {
 		}
 
 		if req.Headers["Connection"] == "close" {
+			httpcore.Response{
+				Status:     httpcore.StatusOK,
+				Connection: "close",
+			}.Write(conn)
 			return
 		}
 	}
