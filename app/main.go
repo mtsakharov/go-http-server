@@ -74,19 +74,33 @@ func handleConn(conn net.Conn, dir string) {
 	} else if strings.HasPrefix(path, "/files/") {
 		filename := strings.TrimPrefix(path, "/files/")
 		fullPath := dir + filename
+		method := parts[0] // "GET" или "POST"
 
-		data, err := os.ReadFile(fullPath)
-		if err != nil {
-			conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-		} else {
-			response := fmt.Sprintf(
-				"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n",
-				len(data),
-			)
-			conn.Write([]byte(response))
-			conn.Write(data)
+		if method == "GET" {
+			data, err := os.ReadFile(fullPath)
+			if err != nil {
+				conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+			} else {
+				response := fmt.Sprintf(
+					"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n",
+					len(data),
+				)
+				conn.Write([]byte(response))
+				conn.Write(data)
+			}
+
+		} else if method == "POST" {
+			// Разбиваем запрос на заголовки и тело
+			requestParts := strings.SplitN(request, "\r\n\r\n", 2)
+			body := requestParts[1]
+
+			err := os.WriteFile(fullPath, []byte(body), 0644)
+			if err != nil {
+				conn.Write([]byte("HTTP/1.1 500 Internal Server Error\r\n\r\n"))
+			} else {
+				conn.Write([]byte("HTTP/1.1 201 Created\r\n\r\n"))
+			}
 		}
-
 	} else if path == "/user-agent" {
 		body := getHeader(lines, "User-Agent")
 		response := fmt.Sprintf(
