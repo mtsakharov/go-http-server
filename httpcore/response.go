@@ -9,7 +9,7 @@ type Response struct {
 	Status      StatusCode
 	ContentType string
 	Encoding    string
-	Connection  string
+	Connection  string // добавить
 	Body        []byte
 }
 
@@ -31,7 +31,6 @@ func (r Response) Write(conn net.Conn) {
 	}
 
 	result += "\r\n"
-
 	conn.Write([]byte(result))
 	if len(r.Body) > 0 {
 		conn.Write(r.Body)
