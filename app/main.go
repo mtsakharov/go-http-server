@@ -77,4 +77,3 @@ func handleConn(conn net.Conn, dir string) {
 		}
 	}
 }
-}
