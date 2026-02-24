@@ -44,7 +44,9 @@ func handleConn(conn net.Conn) {
 	}
 
 	request := string(buf[:read])
-	requestLine := strings.Split(request, "\r\n")[0]
+
+	lines := strings.Split(request, "\r\n")
+	requestLine := lines[0]
 	parts := strings.Split(requestLine, " ")
 	if len(parts) < 2 {
 		return
@@ -63,7 +65,24 @@ func handleConn(conn net.Conn) {
 		)
 		conn.Write([]byte(response))
 
+	} else if path == "/user-agent" {
+		body := getHeader(lines, "User-Agent")
+		response := fmt.Sprintf(
+			"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
+			len(body), body,
+		)
+		conn.Write([]byte(response))
 	} else {
 		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 	}
+}
+
+func getHeader(lines []string, name string) string {
+	for _, line := range lines {
+		if strings.HasPrefix(line, name+": ") {
+			return strings.TrimPrefix(line, name+": ")
+		}
+	}
+
+	return ""
 }
