@@ -9,11 +9,11 @@ type Response struct {
 	Status      StatusCode
 	ContentType string
 	Encoding    string
-	Connection  string // добавить
+	Connection  string
 	Body        []byte
 }
 
-func (r Response) Write(conn net.Conn) {
+func (r Response) Write(conn net.Conn) error {
 	text := statusText[r.Status]
 	result := fmt.Sprintf("HTTP/1.1 %d %s\r\n", r.Status, text)
 
@@ -24,15 +24,16 @@ func (r Response) Write(conn net.Conn) {
 		result += fmt.Sprintf("Content-Encoding: %s\r\n", r.Encoding)
 	}
 	if r.Connection != "" {
-		result += fmt.Sprintf("Connection: %s\r\n", r.Connection) // добавить
-	}
-	if len(r.Body) > 0 {
-		result += fmt.Sprintf("Content-Length: %d\r\n", len(r.Body))
+		result += fmt.Sprintf("Connection: %s\r\n", r.Connection)
 	}
 
+	result += fmt.Sprintf("Content-Length: %d\r\n", len(r.Body))
 	result += "\r\n"
-	conn.Write([]byte(result))
-	if len(r.Body) > 0 {
-		conn.Write(r.Body)
-	}
+
+	buf := make([]byte, 0, len(result)+len(r.Body))
+	buf = append(buf, result...)
+	buf = append(buf, r.Body...)
+
+	_, err := conn.Write(buf)
+	return err
 }

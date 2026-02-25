@@ -2,14 +2,18 @@ package handlers
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/codecrafters-io/http-server-starter-go/httpcore"
+	"github.com/mtsakharov/go-http-server/internal/server/httpcore"
 )
 
 func Files(req httpcore.Request, dir string) httpcore.Response {
 	filename := strings.TrimPrefix(req.Path, "/files/")
-	fullPath := dir + filename
+	fullPath := filepath.Join(dir, filename)
+	if !strings.HasPrefix(fullPath, filepath.Clean(dir)) {
+		return httpcore.Response{Status: httpcore.StatusNotFound}
+	}
 
 	switch req.Method {
 	case httpcore.GET:

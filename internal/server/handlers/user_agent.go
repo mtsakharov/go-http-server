@@ -1,11 +1,11 @@
 package handlers
 
-import "github.com/codecrafters-io/http-server-starter-go/httpcore"
+import "github.com/mtsakharov/go-http-server/internal/server/httpcore"
 
 func UserAgent(req httpcore.Request) httpcore.Response {
 	return httpcore.Response{
 		Status:      httpcore.StatusOK,
 		ContentType: "text/plain",
-		Body:        []byte(req.Headers["User-Agent"]),
+		Body:        []byte(req.Headers["user-agent"]),
 	}
 }

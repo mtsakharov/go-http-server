@@ -1,6 +1,9 @@
 package httpcore
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Method string
 
@@ -16,16 +19,16 @@ type Request struct {
 	Body    string
 }
 
-func ParseRequest(raw string) Request {
-	// Разделяем заголовки и тело
+func ParseRequest(raw string) (Request, error) {
 	requestParts := strings.SplitN(raw, "\r\n\r\n", 2)
 
 	lines := strings.Split(requestParts[0], "\r\n")
 
-	// Парсим первую строку: "GET /path HTTP/1.1"
 	parts := strings.Split(lines[0], " ")
+	if len(parts) < 2 {
+		return Request{}, fmt.Errorf("malformed request line: %q", lines[0])
+	}
 
-	// Парсим заголовки в map
 	headers := make(map[string]string)
 	for _, line := range lines[1:] {
 		if line == "" {
@@ -33,7 +36,7 @@ func ParseRequest(raw string) Request {
 		}
 		kv := strings.SplitN(line, ": ", 2)
 		if len(kv) == 2 {
-			headers[kv[0]] = kv[1]
+			headers[strings.ToLower(kv[0])] = kv[1]
 		}
 	}
 
@@ -47,5 +50,5 @@ func ParseRequest(raw string) Request {
 		Path:    parts[1],
 		Headers: headers,
 		Body:    body,
-	}
+	}, nil
 }
