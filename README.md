@@ -1,37 +1,94 @@
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/647bc5e2-c3ba-4070-9a49-55de7549a74d)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# go-http-server
 
-This is a starting point for Go solutions to the
-["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
+A lightweight HTTP/1.1 server built from scratch in Go using raw TCP sockets. No `net/http` — just `net.Conn`, a parser, and a router.
 
-[HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) is the
-protocol that powers the web. In this challenge, you'll build a HTTP/1.1 server
-that is capable of serving multiple clients.
+Built as part of the [CodeCrafters "Build Your Own HTTP Server" challenge](https://app.codecrafters.io/courses/http-server/overview).
 
-Along the way you'll learn about TCP servers,
-[HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
-and more.
+## Features
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- HTTP/1.1 request parsing with keep-alive support
+- Request routing (`/`, `/echo/{msg}`, `/files/{name}`, `/user-agent`)
+- File serving (GET) and uploading (POST)
+- Gzip compression (`Accept-Encoding: gzip`)
+- Path traversal protection on file operations
+- Concurrent connection handling via goroutines
 
-# Passing the first stage
+## Project Structure
 
-The entry point for your HTTP server implementation is in `app/main.go`. Study
-and uncomment the relevant code, and push your changes to pass the first stage:
-
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+```
+cmd/server/main.go             # Entry point, TCP listener, connection loop, routing
+internal/server/
+  httpcore/
+    request.go                  # HTTP request parser
+    response.go                 # HTTP response writer
+    status.go                   # Status code constants
+  handlers/
+    echo.go                     # /echo/{msg} handler
+    files.go                    # /files/{name} handler (GET & POST)
+    user_agent.go               # /user-agent handler
+  compress/
+    gzip.go                     # Gzip compression utility
 ```
 
-Time to move on to the next stage!
+## Requirements
 
-# Stage 2 & beyond
+- Go 1.25+
 
-Note: This section is for stages 2 and beyond.
+## Usage
 
-1. Ensure you have `go (1.25)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.go`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+### Build and run
+
+```sh
+go build -o server ./cmd/server
+./server
+```
+
+### With a file-serving directory
+
+```sh
+./server --directory /tmp/files
+```
+
+The server listens on `0.0.0.0:4221`.
+
+### Endpoints
+
+| Method | Path              | Description                          |
+|--------|-------------------|--------------------------------------|
+| GET    | `/`               | Returns 200 OK                       |
+| GET    | `/echo/{message}` | Echoes back the message              |
+| GET    | `/user-agent`     | Returns the User-Agent header value  |
+| GET    | `/files/{name}`   | Returns file contents from directory |
+| POST   | `/files/{name}`   | Writes request body to file          |
+
+### Example
+
+```sh
+# Echo
+curl http://localhost:4221/echo/hello
+
+# File upload
+curl -X POST http://localhost:4221/files/test.txt -d "hello world"
+
+# File download
+curl http://localhost:4221/files/test.txt
+
+# Gzip
+curl -H "Accept-Encoding: gzip" http://localhost:4221/echo/hello --compressed
+```
+
+## Testing
+
+```sh
+go test ./...
+```
+
+Run with verbose output:
+
+```sh
+go test ./... -v
+```
+
+## License
+
+MIT
